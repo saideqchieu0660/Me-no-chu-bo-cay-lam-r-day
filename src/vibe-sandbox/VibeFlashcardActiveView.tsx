@@ -58,6 +58,8 @@ export interface VibeFlashcardActiveViewProps {
   onSaveFormattedCard?: (newFront: string, newBack: string, newExample?: string) => Promise<void>;
   correctCount?: number;
   incorrectCount?: number;
+  weakCardsCount?: number;
+  onReviewWeakCards?: () => void;
   deck?: Deck | null;
 }
 
@@ -103,6 +105,8 @@ export const VibeFlashcardActiveView: React.FC<VibeFlashcardActiveViewProps> = R
   detectLanguage,
   correctCount = 0,
   incorrectCount = 0,
+  weakCardsCount = 0,
+  onReviewWeakCards,
   deck,
 }) => {
   
@@ -971,6 +975,16 @@ export const VibeFlashcardActiveView: React.FC<VibeFlashcardActiveViewProps> = R
               </button>
           </div>
 
+          {weakCardsCount > 0 && onReviewWeakCards && (
+             <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onReviewWeakCards(); }}
+                className="w-full py-3 sm:py-3.5 rounded-2xl font-extrabold text-sm sm:text-base transition flex items-center justify-center gap-2 bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 active:scale-[0.98]"
+             >
+                <X className="w-4.5 h-4.5" />
+                Chỉ ôn tập thẻ X ({weakCardsCount})
+             </button>
+          )}
           {onPrevCard && (
             <button 
               type="button"

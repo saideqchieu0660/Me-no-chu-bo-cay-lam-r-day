@@ -782,6 +782,10 @@ export default function VibeStudyRoom() {
       if (deck) {
         const progressKey = `study_progress_${user?.id || "guest"}_${deck.id}`;
         localStorage.setItem(progressKey, "0");
+        
+        const storageKey = `weak_cards_${deck.id}`;
+        const savedWeakIds = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        setWeakCardIds(savedWeakIds);
       }
     }
   }, [finished, deck, user?.id]);
@@ -1218,9 +1222,6 @@ export default function VibeStudyRoom() {
     setStudyQueue(weakCards);
     setStudyMode("weak");
     setCurrentIndex(0);
-    setSessionCorrectCount(0);
-    setSessionMasteryGained(0);
-    setSessionHistory([]);
     setFinished(false);
     setIsFlipped(false);
     if (!isPinned) setDeepExplanation(null);
@@ -1232,9 +1233,6 @@ export default function VibeStudyRoom() {
     setStudyQueue(deck.cards || []);
     setStudyMode("all");
     setCurrentIndex(0);
-    setSessionCorrectCount(0);
-    setSessionMasteryGained(0);
-    setSessionHistory([]);
     setFinished(false);
     setIsFlipped(false);
     if (!isPinned) setDeepExplanation(null);
@@ -1600,7 +1598,6 @@ export default function VibeStudyRoom() {
       if (currentCard) {
         if (remembered) {
           playCorrectSound();
-          setSessionCorrectCount((prev) => prev + 1);
           if (
             typeof navigator !== "undefined" &&
             typeof navigator.vibrate === "function"
@@ -2067,23 +2064,35 @@ export default function VibeStudyRoom() {
     setShowRemindToast(true);
     setTimeout(() => setShowRemindToast(false), 2000);
 
-    const nextStudiedCount = sessionHistory.length + 1;
-    const nextAccuracy = Math.round(
-      (sessionCorrectCount / nextStudiedCount) * 100,
-    );
-
-    setSessionHistory((prev) => [
-      ...prev,
-      {
-        cardIndex: nextStudiedCount,
-        front: currentCard.front,
-        status: "skipped",
-        cumulativeCorrect: sessionCorrectCount,
-        cumulativeStudied: nextStudiedCount,
-        accuracy: nextAccuracy,
-        masteryChange: 0,
-      },
-    ]);
+    setSessionHistory((prev) => {
+        const existingIndex = prev.findIndex(h => h.cardId === currentCard.id);
+        const next = [...prev];
+        if (existingIndex !== -1) {
+             const oldStatus = next[existingIndex].status;
+             if (oldStatus === "correct") {
+                 setSessionCorrectCount(c => Math.max(0, c - 1));
+             }
+             next[existingIndex] = {
+                 ...next[existingIndex],
+                 status: "skipped",
+             };
+             return next;
+        } else {
+             const nextStudiedCount = prev.length + 1;
+             const nextAccuracy = Math.round((sessionCorrectCount / nextStudiedCount) * 100);
+             next.push({
+                cardId: currentCard.id,
+                cardIndex: nextStudiedCount,
+                front: currentCard.front,
+                status: "skipped",
+                cumulativeCorrect: sessionCorrectCount,
+                cumulativeStudied: nextStudiedCount,
+                accuracy: nextAccuracy,
+                masteryChange: 0,
+             });
+             return next;
+        }
+    });
 
     // Move to next card
     setIsFlipped(false);
@@ -2923,6 +2932,8 @@ export default function VibeStudyRoom() {
         onPrevCard={handlePrevCard}
         correctCount={sessionCorrectCount}
         incorrectCount={sessionHistory.filter((item) => item.status === "incorrect").length}
+        weakCardsCount={weakCardIds.length}
+        onReviewWeakCards={startReviewXCards}
         onAddToClass={() => setIsClassModalOpen(true)}
         onEditDeckMetadata={canEditDeck ? () => setIsEditDeckModalOpen(true) : undefined}
         isSoundEnabled={isSoundEnabled}
