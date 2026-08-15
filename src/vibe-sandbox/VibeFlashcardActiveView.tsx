@@ -975,11 +975,16 @@ export const VibeFlashcardActiveView: React.FC<VibeFlashcardActiveViewProps> = R
               </button>
           </div>
 
-          {weakCardsCount > 0 && onReviewWeakCards && (
+          {onReviewWeakCards && (
              <button
                 type="button"
+                disabled={weakCardsCount === 0}
                 onClick={(e) => { e.stopPropagation(); onReviewWeakCards(); }}
-                className="w-full py-3 sm:py-3.5 rounded-2xl font-extrabold text-sm sm:text-base transition flex items-center justify-center gap-2 bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 active:scale-[0.98]"
+                className={`w-full py-3 sm:py-3.5 rounded-2xl font-extrabold text-sm sm:text-base transition flex items-center justify-center gap-2 border active:scale-[0.98] ${
+                  weakCardsCount > 0 
+                    ? "bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400 hover:bg-red-500 hover:text-white border-red-500/20"
+                    : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800/50 dark:text-zinc-600 border-zinc-200 dark:border-zinc-800 cursor-not-allowed"
+                }`}
              >
                 <X className="w-4.5 h-4.5" />
                 Chỉ ôn tập thẻ X ({weakCardsCount})
