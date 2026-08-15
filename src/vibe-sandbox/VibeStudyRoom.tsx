@@ -2638,15 +2638,18 @@ export default function VibeStudyRoom() {
                   <RefreshCcw className="w-4 h-4 text-orange-500" />
                   Ôn tập lại từ đầu (Review All)
                 </button>
-                {weakCardIds.length > 0 && (
-                  <button
-                    onClick={startReviewXCards}
-                    className="w-full px-5 py-3.5 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 font-bold hover:bg-red-500 hover:text-white transition flex items-center justify-center gap-2 text-sm border border-red-500/20"
+                <button
+                    onClick={weakCardIds.length > 0 ? startReviewXCards : undefined}
+                    disabled={weakCardIds.length === 0}
+                    className={`w-full px-5 py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm border ${
+                      weakCardIds.length > 0
+                        ? "bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white border-red-500/20"
+                        : "bg-zinc-200/50 text-zinc-400 dark:bg-zinc-800/50 dark:text-zinc-600 border-zinc-300/50 dark:border-zinc-700/50 cursor-not-allowed"
+                    }`}
                   >
                     <X className="w-4 h-4" />
                     Ôn tập thẻ X ({weakCardIds.length})
                   </button>
-                )}
                 <button
                   onClick={handleBack}
                   className="w-full px-5 py-3.5 rounded-xl bg-orange-500 text-black font-bold hover:bg-orange-600 transition shadow-lg flex items-center justify-center gap-2 text-sm border-none cursor-pointer"
