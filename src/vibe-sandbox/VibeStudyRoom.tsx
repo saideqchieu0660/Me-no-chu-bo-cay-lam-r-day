@@ -789,12 +789,12 @@ export default function VibeStudyRoom() {
       }
     }
   }, [finished, deck, user?.id]);
-  const [sessionCorrectCount, setSessionCorrectCount] = useState(0);
   const [sessionMasteryGained, setSessionMasteryGained] = useState(0);
   const [sessionStartTime] = useState(() => Date.now());
   const [sessionTimeSpent, setSessionTimeSpent] = useState(0);
   const [sessionHistory, setSessionHistory] = useState<
     Array<{
+      cardId?: string;
       cardIndex: number;
       front: string;
       status: "correct" | "incorrect" | "skipped";
@@ -804,6 +804,7 @@ export default function VibeStudyRoom() {
       masteryChange: number;
     }>
   >([]);
+  const sessionCorrectCount = sessionHistory.filter(h => h.status === "correct").length;
 
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [isEditDeckModalOpen, setIsEditDeckModalOpen] = useState(false);
@@ -1150,18 +1151,18 @@ export default function VibeStudyRoom() {
       if (savedSessionStr && loadedIdx > 0) {
         try {
           const savedSession = JSON.parse(savedSessionStr);
-          setSessionCorrectCount(savedSession.correctCount || 0);
+          
           setSessionMasteryGained(savedSession.masteryGained || 0);
           setSessionTimeSpent(savedSession.timeSpent || 0);
           setSessionHistory(savedSession.history || []);
         } catch(e) {
-          setSessionCorrectCount(0);
+          
           setSessionMasteryGained(0);
           setSessionTimeSpent(0);
           setSessionHistory([]);
         }
       } else {
-        setSessionCorrectCount(0);
+        
         setSessionMasteryGained(0);
         setSessionTimeSpent(0);
         setSessionHistory([]);
@@ -1623,24 +1624,42 @@ export default function VibeStudyRoom() {
         const diff = newMastery - oldMastery;
         setSessionMasteryGained((prev) => prev + diff);
 
-        const nextCorrectCount = sessionCorrectCount + (remembered ? 1 : 0);
-        const nextStudiedCount = sessionHistory.length + 1;
-        const nextAccuracy = Math.round(
-          (nextCorrectCount / nextStudiedCount) * 100,
-        );
-
-        setSessionHistory((prev) => [
-          ...prev,
-          {
-            cardIndex: nextStudiedCount,
-            front: currentCard.front,
-            status: remembered ? "correct" : "incorrect",
-            cumulativeCorrect: nextCorrectCount,
-            cumulativeStudied: nextStudiedCount,
-            accuracy: nextAccuracy,
-            masteryChange: diff,
-          },
-        ]);
+        setSessionHistory((prev) => {
+          const existingIdx = prev.findIndex((item) => item.cardId === currentCard.id);
+          const newStatus = remembered ? "correct" : "incorrect";
+          const next = [...prev];
+          
+          if (existingIdx !== -1) {
+              next[existingIdx] = {
+                  ...next[existingIdx],
+                  status: newStatus,
+                  masteryChange: diff,
+              };
+          } else {
+              next.push({
+                  cardId: currentCard.id,
+                  cardIndex: prev.length + 1,
+                  front: currentCard.front,
+                  status: newStatus,
+                  masteryChange: diff,
+                  cumulativeCorrect: 0,
+                  cumulativeStudied: 0,
+                  accuracy: 0,
+              });
+          }
+          
+          let runningCorrect = 0;
+          return next.map((item, idx) => {
+              if (item.status === "correct") runningCorrect++;
+              return {
+                  ...item,
+                  cardIndex: idx + 1,
+                  cumulativeCorrect: runningCorrect,
+                  cumulativeStudied: idx + 1,
+                  accuracy: Math.round((runningCorrect / (idx + 1)) * 100)
+              };
+          });
+        });
 
         if (deck) {
           const storageKey = `weak_cards_${deck.id}`;
@@ -1677,7 +1696,6 @@ export default function VibeStudyRoom() {
     [
       currentCard,
       deck,
-      sessionCorrectCount,
       sessionHistory.length,
       isPinned,
       currentIndex,
@@ -2065,33 +2083,39 @@ export default function VibeStudyRoom() {
     setTimeout(() => setShowRemindToast(false), 2000);
 
     setSessionHistory((prev) => {
-        const existingIndex = prev.findIndex(h => h.cardId === currentCard.id);
+        const existingIdx = prev.findIndex(item => item.cardId === currentCard.id);
         const next = [...prev];
-        if (existingIndex !== -1) {
-             const oldStatus = next[existingIndex].status;
-             if (oldStatus === "correct") {
-                 setSessionCorrectCount(c => Math.max(0, c - 1));
-             }
-             next[existingIndex] = {
-                 ...next[existingIndex],
-                 status: "skipped",
-             };
-             return next;
+        
+        if (existingIdx !== -1) {
+            next[existingIdx] = {
+                ...next[existingIdx],
+                status: "skipped",
+                masteryChange: 0,
+            };
         } else {
-             const nextStudiedCount = prev.length + 1;
-             const nextAccuracy = Math.round((sessionCorrectCount / nextStudiedCount) * 100);
-             next.push({
+            next.push({
                 cardId: currentCard.id,
-                cardIndex: nextStudiedCount,
+                cardIndex: prev.length + 1,
                 front: currentCard.front,
                 status: "skipped",
-                cumulativeCorrect: sessionCorrectCount,
-                cumulativeStudied: nextStudiedCount,
-                accuracy: nextAccuracy,
                 masteryChange: 0,
-             });
-             return next;
+                cumulativeCorrect: 0,
+                cumulativeStudied: 0,
+                accuracy: 0,
+            });
         }
+        
+        let runningCorrect = 0;
+        return next.map((item, idx) => {
+            if (item.status === 'correct') runningCorrect++;
+            return {
+                ...item,
+                cardIndex: idx + 1,
+                cumulativeCorrect: runningCorrect,
+                cumulativeStudied: idx + 1,
+                accuracy: Math.round((runningCorrect / (idx + 1)) * 100)
+            };
+        });
     });
 
     // Move to next card
